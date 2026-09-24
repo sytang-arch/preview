@@ -1,0 +1,110 @@
+{
+  "query": {
+    "order_id": "SO2026080301204",
+    "queried_at": "2026-09-21T11:00:00+08:00"
+  },
+  "tables": {
+    "orders": [
+      {
+        "order_id": "SO2026080301204",
+        "merchant_id": "M0231",
+        "user_id": "U996793",
+        "order_time": "2026-08-03 15:35:52",
+        "channel": "tmall",
+        "currency": "CNY",
+        "goods_amount": 159.0,
+        "freight_amount": 0.0,
+        "discount_amount": 0.0,
+        "payable_amount": 159.0,
+        "paid_amount": 159.0,
+        "order_status": "paid",
+        "refund_status": "full",
+        "settlement_batch": "ST202608",
+        "created_at": "2026-08-03 15:35:52",
+        "updated_at": "2026-08-03 15:35:52"
+      }
+    ],
+    "order_items": [
+      {
+        "item_id": "IT01",
+        "sku_id": "SKU0231-002",
+        "product_name": "氨基酸洁面乳 120g",
+        "category": "洁面",
+        "unit_price": 159.0,
+        "quantity": 1,
+        "item_amount": 159.0,
+        "item_status": "normal"
+      }
+    ],
+    "coupons": [],
+    "payments": [
+      {
+        "payment_id": "PAY301204",
+        "order_id": "SO2026080301204",
+        "paid_at": "2026-08-03 15:35:52",
+        "amount": 159.0,
+        "pay_channel": "alipay",
+        "trade_no": "522184880952",
+        "status": "success"
+      }
+    ],
+    "refunds": [
+      {
+        "refund_id": "RF2026082200341",
+        "order_id": "SO2026080301204",
+        "refund_no": "RF2026082200341",
+        "applied_at": "2026-08-22 09:00:00",
+        "refunded_at": "2026-08-22 14:30:00",
+        "amount": 159.0,
+        "refund_type": "full",
+        "refund_scope": "整单",
+        "reason": "7天无理由退货",
+        "status": "success"
+      }
+    ],
+    "settlements": [
+      {
+        "settlement_id": "SE20260812041",
+        "order_id": "SO2026080301204",
+        "batch_no": "ST202608",
+        "period": "2026-08",
+        "settlement_base": 159.0,
+        "commission_rate": 0.1,
+        "commission_amount": 15.9,
+        "refund_deduction": 0.0,
+        "settlement_amount": 143.1,
+        "settled_at": "2026-09-05",
+        "calc_note": ""
+      }
+    ],
+    "settlement_batches": [
+      {
+        "batch_no": "ST202608",
+        "period": "2026-08",
+        "generated_at": "2026-09-05 03:00:00",
+        "run_type": "initial",
+        "status": "settled"
+      }
+    ],
+    "merchants": [
+      {
+        "merchant_id": "M0231",
+        "merchant_name": "轻颜美妆旗舰店",
+        "commission_rate": 0.1,
+        "settlement_cycle": "monthly",
+        "status": "active",
+        "joined_at": "2023-04-18"
+      }
+    ]
+  },
+  "row_counts": {
+    "orders": 1,
+    "order_items": 1,
+    "coupons": 0,
+    "payments": 1,
+    "refunds": 1,
+    "settlements": 1,
+    "settlement_batches": 1,
+    "merchants": 1
+  }
+}

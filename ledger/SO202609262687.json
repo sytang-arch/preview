@@ -1,0 +1,97 @@
+{
+  "query": {
+    "order_id": "SO202609262687",
+    "queried_at": "2026-09-21T11:00:00+08:00"
+  },
+  "tables": {
+    "orders": [
+      {
+        "order_id": "SO202609262687",
+        "merchant_id": "M0577",
+        "user_id": "U947943",
+        "order_time": "2026-09-26 22:32:27",
+        "channel": "jd",
+        "currency": "CNY",
+        "goods_amount": 399.0,
+        "freight_amount": 0.0,
+        "discount_amount": 0.0,
+        "payable_amount": 399.0,
+        "paid_amount": 399.0,
+        "order_status": "paid",
+        "refund_status": "none",
+        "settlement_batch": "ST202609",
+        "created_at": "2026-09-26 22:32:27",
+        "updated_at": "2026-09-26 22:32:27"
+      }
+    ],
+    "order_items": [
+      {
+        "item_id": "IT01",
+        "sku_id": "SKU0577-001",
+        "product_name": "纯棉四件套 1.8m",
+        "category": "床品",
+        "unit_price": 399.0,
+        "quantity": 1,
+        "item_amount": 399.0,
+        "item_status": "normal"
+      }
+    ],
+    "coupons": [],
+    "payments": [
+      {
+        "payment_id": "PAY262687",
+        "order_id": "SO202609262687",
+        "paid_at": "2026-09-26 22:32:27",
+        "amount": 399.0,
+        "pay_channel": "unionpay",
+        "trade_no": "623223008197",
+        "status": "success"
+      }
+    ],
+    "refunds": [],
+    "settlements": [
+      {
+        "settlement_id": "SE20260926871",
+        "order_id": "SO202609262687",
+        "batch_no": "ST202609",
+        "period": "2026-09",
+        "settlement_base": 399.0,
+        "commission_rate": 0.08,
+        "commission_amount": 31.92,
+        "refund_deduction": 0.0,
+        "settlement_amount": 367.08,
+        "settled_at": "2026-10-05",
+        "calc_note": ""
+      }
+    ],
+    "settlement_batches": [
+      {
+        "batch_no": "ST202609",
+        "period": "2026-09",
+        "generated_at": "2026-10-05 03:00:00",
+        "run_type": "initial",
+        "status": "settled"
+      }
+    ],
+    "merchants": [
+      {
+        "merchant_id": "M0577",
+        "merchant_name": "悦己家居专营店",
+        "commission_rate": 0.08,
+        "settlement_cycle": "monthly",
+        "status": "active",
+        "joined_at": "2024-06-01"
+      }
+    ]
+  },
+  "row_counts": {
+    "orders": 1,
+    "order_items": 1,
+    "coupons": 0,
+    "payments": 1,
+    "refunds": 0,
+    "settlements": 1,
+    "settlement_batches": 1,
+    "merchants": 1
+  }
+}

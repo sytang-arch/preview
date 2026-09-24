@@ -1,0 +1,97 @@
+{
+  "query": {
+    "order_id": "SO202607037645",
+    "queried_at": "2026-09-21T11:00:00+08:00"
+  },
+  "tables": {
+    "orders": [
+      {
+        "order_id": "SO202607037645",
+        "merchant_id": "M0577",
+        "user_id": "U783737",
+        "order_time": "2026-07-03 17:12:41",
+        "channel": "mini_program",
+        "currency": "CNY",
+        "goods_amount": 804.0,
+        "freight_amount": 8.0,
+        "discount_amount": 0.0,
+        "payable_amount": 812.0,
+        "paid_amount": 812.0,
+        "order_status": "paid",
+        "refund_status": "none",
+        "settlement_batch": "ST202607",
+        "created_at": "2026-07-03 17:12:41",
+        "updated_at": "2026-07-03 17:12:41"
+      }
+    ],
+    "order_items": [
+      {
+        "item_id": "IT01",
+        "sku_id": "SKU0577-003",
+        "product_name": "日式实木边几",
+        "category": "家具",
+        "unit_price": 268.0,
+        "quantity": 3,
+        "item_amount": 804.0,
+        "item_status": "normal"
+      }
+    ],
+    "coupons": [],
+    "payments": [
+      {
+        "payment_id": "PAY037645",
+        "order_id": "SO202607037645",
+        "paid_at": "2026-07-03 17:12:41",
+        "amount": 812.0,
+        "pay_channel": "unionpay",
+        "trade_no": "273727160254",
+        "status": "success"
+      }
+    ],
+    "refunds": [],
+    "settlements": [
+      {
+        "settlement_id": "SE20260776451",
+        "order_id": "SO202607037645",
+        "batch_no": "ST202607",
+        "period": "2026-07",
+        "settlement_base": 804.0,
+        "commission_rate": 0.08,
+        "commission_amount": 64.32,
+        "refund_deduction": 0.0,
+        "settlement_amount": 739.68,
+        "settled_at": "2026-08-05",
+        "calc_note": ""
+      }
+    ],
+    "settlement_batches": [
+      {
+        "batch_no": "ST202607",
+        "period": "2026-07",
+        "generated_at": "2026-08-05 03:00:00",
+        "run_type": "initial",
+        "status": "settled"
+      }
+    ],
+    "merchants": [
+      {
+        "merchant_id": "M0577",
+        "merchant_name": "悦己家居专营店",
+        "commission_rate": 0.08,
+        "settlement_cycle": "monthly",
+        "status": "active",
+        "joined_at": "2024-06-01"
+      }
+    ]
+  },
+  "row_counts": {
+    "orders": 1,
+    "order_items": 1,
+    "coupons": 0,
+    "payments": 1,
+    "refunds": 0,
+    "settlements": 1,
+    "settlement_batches": 1,
+    "merchants": 1
+  }
+}

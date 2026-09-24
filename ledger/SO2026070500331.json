@@ -1,0 +1,97 @@
+{
+  "query": {
+    "order_id": "SO2026070500331",
+    "queried_at": "2026-09-21T11:00:00+08:00"
+  },
+  "tables": {
+    "orders": [
+      {
+        "order_id": "SO2026070500331",
+        "merchant_id": "M0231",
+        "user_id": "U353482",
+        "order_time": "2026-07-05 09:12:04",
+        "channel": "douyin",
+        "currency": "CNY",
+        "goods_amount": 387.0,
+        "freight_amount": 0.0,
+        "discount_amount": 0.0,
+        "payable_amount": 387.0,
+        "paid_amount": 0.0,
+        "order_status": "cancelled",
+        "refund_status": "none",
+        "settlement_batch": "ST202607",
+        "created_at": "2026-07-05 09:12:04",
+        "updated_at": "2026-07-05 09:12:04"
+      }
+    ],
+    "order_items": [
+      {
+        "item_id": "IT01",
+        "sku_id": "SKU0231-005",
+        "product_name": "玻尿酸补水面膜 10片",
+        "category": "面膜",
+        "unit_price": 129.0,
+        "quantity": 3,
+        "item_amount": 387.0,
+        "item_status": "normal"
+      }
+    ],
+    "coupons": [],
+    "payments": [
+      {
+        "payment_id": "PAY500331",
+        "order_id": "SO2026070500331",
+        "paid_at": "2026-07-05 09:12:04",
+        "amount": 0.0,
+        "pay_channel": "alipay",
+        "trade_no": "921016073146",
+        "status": "closed"
+      }
+    ],
+    "refunds": [],
+    "settlements": [
+      {
+        "settlement_id": "SE20260703311",
+        "order_id": "SO2026070500331",
+        "batch_no": "ST202607",
+        "period": "2026-07",
+        "settlement_base": 387.0,
+        "commission_rate": 0.1,
+        "commission_amount": 38.7,
+        "refund_deduction": 0.0,
+        "settlement_amount": 348.3,
+        "settled_at": "2026-08-05",
+        "calc_note": ""
+      }
+    ],
+    "settlement_batches": [
+      {
+        "batch_no": "ST202607",
+        "period": "2026-07",
+        "generated_at": "2026-08-05 03:00:00",
+        "run_type": "initial",
+        "status": "settled"
+      }
+    ],
+    "merchants": [
+      {
+        "merchant_id": "M0231",
+        "merchant_name": "轻颜美妆旗舰店",
+        "commission_rate": 0.1,
+        "settlement_cycle": "monthly",
+        "status": "active",
+        "joined_at": "2023-04-18"
+      }
+    ]
+  },
+  "row_counts": {
+    "orders": 1,
+    "order_items": 1,
+    "coupons": 0,
+    "payments": 1,
+    "refunds": 0,
+    "settlements": 1,
+    "settlement_batches": 1,
+    "merchants": 1
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "table": "recon_diff",
+  "period": "2026-07",
+  "batch_no": "ST202607",
+  "generated_at": "2026-08-05 03:00:00",
+  "row_count": 4,
+  "columns": [
+    "diff_id",
+    "batch_no",
+    "order_id",
+    "merchant_id",
+    "merchant_name",
+    "order_amount",
+    "settled_amount",
+    "gross_gap",
+    "symptom",
+    "status",
+    "detected_at"
+  ],
+  "rows": [
+    {
+      "diff_id": "D20260701",
+      "batch_no": "ST202607",
+      "order_id": "SO2026070500331",
+      "merchant_id": "M0231",
+      "merchant_name": "轻颜美妆旗舰店",
+      "order_amount": 387.0,
+      "settled_amount": 348.3,
+      "gross_gap": -38.7,
+      "symptom": "该订单已作废，但仍产生结算记录",
+      "status": "open",
+      "detected_at": "2026-08-05 03:00:00"
+    },
+    {
+      "diff_id": "D20260702",
+      "batch_no": "ST202607",
+      "order_id": "SO2026071200664",
+      "merchant_id": "M0231",
+      "merchant_name": "轻颜美妆旗舰店",
+      "order_amount": 337.0,
+      "settled_amount": 303.3,
+      "gross_gap": -33.7,
+      "symptom": "部分退款后结算额未重算",
+      "status": "open",
+      "detected_at": "2026-08-05 03:00:00"
+    },
+    {
+      "diff_id": "D20260703",
+      "batch_no": "ST202607",
+      "order_id": "SO2026072000198",
+      "merchant_id": "M0577",
+      "merchant_name": "悦己家居专营店",
+      "order_amount": 268.0,
+      "settled_amount": 0.0,
+      "gross_gap": -268.0,
+      "symptom": "结算额为零，但退款发生在下一周期",
+      "status": "open",
+      "detected_at": "2026-08-05 03:00:00"
+    },
+    {
+      "diff_id": "D20260704",
+      "batch_no": "ST202607",
+      "order_id": "SO2026072600745",
+      "merchant_id": "M0902",
+      "merchant_name": "山海食品旗舰店",
+      "order_amount": 299.5,
+      "settled_amount": 245.96,
+      "gross_gap": -53.54,
+      "symptom": "结算额低于按商品原价计算的结果",
+      "status": "open",
+      "detected_at": "2026-08-05 03:00:00"
+    }
+  ],
+  "batch_meta": {
+    "settlement_batch": "ST202607",
+    "period": "2026-07",
+    "order_count": 20,
+    "settled_amount_total": 5199.71,
+    "gross_gap_total": -393.94,
+    "note": "gross_gap 为『实际结算额 − 订单商品金额』的粗算值，仅用于发现异常；gross_gap_total 同理，均不是按规则认定的差异金额。"
+  }
+}

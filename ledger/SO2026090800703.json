@@ -1,0 +1,110 @@
+{
+  "query": {
+    "order_id": "SO2026090800703",
+    "queried_at": "2026-09-21T11:00:00+08:00"
+  },
+  "tables": {
+    "orders": [
+      {
+        "order_id": "SO2026090800703",
+        "merchant_id": "M0577",
+        "user_id": "U309900",
+        "order_time": "2026-09-08 15:35:26",
+        "channel": "jd",
+        "currency": "CNY",
+        "goods_amount": 588.0,
+        "freight_amount": 0.0,
+        "discount_amount": 0.0,
+        "payable_amount": 588.0,
+        "paid_amount": 588.0,
+        "order_status": "paid",
+        "refund_status": "none",
+        "settlement_batch": "ST202609",
+        "created_at": "2026-09-08 15:35:26",
+        "updated_at": "2026-09-08 15:35:26"
+      }
+    ],
+    "order_items": [
+      {
+        "item_id": "IT01",
+        "sku_id": "SKU0577-004",
+        "product_name": "天丝凉感被 200x230",
+        "category": "床品",
+        "unit_price": 588.0,
+        "quantity": 1,
+        "item_amount": 588.0,
+        "item_status": "normal"
+      }
+    ],
+    "coupons": [],
+    "payments": [
+      {
+        "payment_id": "PAY800703",
+        "order_id": "SO2026090800703",
+        "paid_at": "2026-09-08 15:35:26",
+        "amount": 588.0,
+        "pay_channel": "wechat",
+        "trade_no": "747151020361",
+        "status": "success"
+      }
+    ],
+    "refunds": [],
+    "settlements": [
+      {
+        "settlement_id": "SE20260907031",
+        "order_id": "SO2026090800703",
+        "batch_no": "ST202609",
+        "period": "2026-09",
+        "settlement_base": 588.0,
+        "commission_rate": 0.08,
+        "commission_amount": 47.04,
+        "refund_deduction": 0.0,
+        "settlement_amount": 540.96,
+        "settled_at": "2026-10-05",
+        "calc_note": ""
+      },
+      {
+        "settlement_id": "SE20260907032",
+        "order_id": "SO2026090800703",
+        "batch_no": "ST202609-RETRY",
+        "period": "2026-09",
+        "settlement_base": 588.0,
+        "commission_rate": 0.08,
+        "commission_amount": 47.04,
+        "refund_deduction": 0.0,
+        "settlement_amount": 540.96,
+        "settled_at": "2026-10-05",
+        "calc_note": "批次重跑追加"
+      }
+    ],
+    "settlement_batches": [
+      {
+        "batch_no": "ST202609",
+        "period": "2026-09",
+        "generated_at": "2026-10-05 03:00:00",
+        "run_type": "rerun",
+        "status": "settled"
+      }
+    ],
+    "merchants": [
+      {
+        "merchant_id": "M0577",
+        "merchant_name": "悦己家居专营店",
+        "commission_rate": 0.08,
+        "settlement_cycle": "monthly",
+        "status": "active",
+        "joined_at": "2024-06-01"
+      }
+    ]
+  },
+  "row_counts": {
+    "orders": 1,
+    "order_items": 1,
+    "coupons": 0,
+    "payments": 1,
+    "refunds": 0,
+    "settlements": 2,
+    "settlement_batches": 1,
+    "merchants": 1
+  }
+}

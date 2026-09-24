@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+<title>结算对账助手</title>
+<!-- 配置已内联在本文件底部的脚本区块中，不再依赖外部配置文件 -->
+<style>
+:root{
+  --bg:#f4f6fa; --card:#fff; --line:#e5e9f0; --line2:#eff2f7;
+  --ink:#18212e; --ink2:#5a6676; --ink3:#8b95a4;
+  --brand:#3b5bdb; --brand2:#5c7cfa; --brand-soft:#eef1fd; --brand-line:#ccd5f7;
+  --ok:#0f9d6b; --ok-soft:#e9f8f2; --ok-line:#c8ecdd;
+  --warn:#a9720c; --warn-soft:#fdf5e6; --warn-line:#f1e0bd;
+  --err:#c8382f; --err-soft:#fdeeec; --err-line:#f5cfcb;
+  --r:14px; --rs:9px;
+  --sh:0 1px 2px rgba(16,24,40,.04), 0 10px 28px -18px rgba(16,24,40,.2);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font:14px/1.72 "PingFang SC","Microsoft YaHei","Hiragino Sans GB",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;
+}
+code,pre{font-family:ui-monospace,Menlo,Consolas,"Courier New",monospace}
+
+/* ================= 顶栏 ================= */
+header{
+  height:58px;background:var(--card);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:11px;padding:0 20px;position:sticky;top:0;z-index:30;
+}
+.mark{
+  width:31px;height:31px;border-radius:9px;flex:0 0 auto;color:#fff;
+  background:linear-gradient(135deg,var(--brand),var(--brand2));
+  font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;
+}
+.ttl b{display:block;font-size:15px;font-weight:650}
+.ttl span{display:block;font-size:11.5px;color:var(--ink3);margin-top:-2px}
+.grow{flex:1}
+.badge{
+  font-size:11.5px;padding:3px 10px;border-radius:99px;white-space:nowrap;
+  color:var(--brand);background:var(--brand-soft);border:1px solid var(--brand-line);
+}
+.badge.ok{color:var(--ok);background:var(--ok-soft);border-color:var(--ok-line)}
+.badge.err{color:var(--err);background:var(--err-soft);border-color:var(--err-line)}
+.btn{
+  font:inherit;font-size:12.5px;cursor:pointer;color:var(--ink2);
+  background:var(--card);border:1px solid var(--line);border-radius:8px;
+  padding:6px 12px;transition:.15s;white-space:nowrap;
+}
+.btn:hover{border-color:var(--brand-line);color:var(--brand);background:var(--brand-soft)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{border-color:var(--line);color:var(--ink2);background:var(--card)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover:not(:disabled){background:#2c48b8;border-color:#2c48b8;color:#fff}
+
+/* ================= 布局 ================= */
+.wrap{
+  max-width:1420px;margin:0 auto;padding:16px;display:grid;
+  grid-template-columns:340px minmax(0,1fr);gap:16px;
+  /* --vh 由 JS 依 visualViewport 实时写入（软键盘弹出时同步收缩），
+     这里两行写法：第一行给不支持 dvh 的旧浏览器兜底 */
+  height:calc(100vh - 58px);
+  height:calc(var(--vh, 100dvh) - 58px);
+}
+.side{overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-right:2px}
+.side::-webkit-scrollbar{width:7px}
+.side::-webkit-scrollbar-thumb{background:#d8dee9;border-radius:7px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh)}
+.card>h2{
+  font-size:12.5px;font-weight:650;padding:12px 15px;border-bottom:1px solid var(--line2);
+  display:flex;align-items:center;gap:8px;
+}
+.card>h2::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--brand)}
+.card>h2 em{font-style:normal;font-weight:400;font-size:11.5px;color:var(--ink3);margin-left:auto}
+.card .bd{padding:13px 15px}
+
+/* ---- 使用须知 ---- */
+ul.notes{list-style:none;display:flex;flex-direction:column;gap:8px}
+ul.notes li{position:relative;padding-left:14px;font-size:12.3px;color:var(--ink2)}
+ul.notes li::before{content:"";position:absolute;left:3px;top:9px;width:4px;height:4px;border-radius:50%;background:#c3cbd8}
+.tag{font-size:11px;border-radius:6px;padding:1px 6px;white-space:nowrap}
+.tag.w{color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn-line)}
+.tag.o{color:var(--ok);background:var(--ok-soft);border:1px solid var(--ok-line)}
+
+/* ================= 对话区 ================= */
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.panel{
+  flex:1;min-height:0;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--sh);display:flex;flex-direction:column;overflow:hidden;
+}
+.panel-hd{
+  height:47px;flex:0 0 auto;border-bottom:1px solid var(--line2);
+  display:flex;align-items:center;gap:9px;padding:0 14px;font-size:12.5px;
+}
+.dot{width:7px;height:7px;border-radius:50%;background:#c9d0dc;flex:0 0 auto;transition:.2s}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.dot.busy{background:var(--brand);animation:pulse 1.1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.panel-hd em{font-style:normal;color:var(--ink3);font-size:11.5px}
+.pchip{
+  font-size:11.5px;padding:2px 9px;border-radius:99px;background:var(--brand-soft);
+  color:var(--brand);border:1px solid var(--brand-line);white-space:nowrap;
+}
+.pchip.empty{background:#f3f5f9;color:var(--ink3);border-color:var(--line)}
+
+.msgs{flex:1;min-height:0;overflow-y:auto;padding:18px 18px 6px;scroll-behavior:smooth}
+.msgs::-webkit-scrollbar{width:9px}
+.msgs::-webkit-scrollbar-thumb{background:#dde2ea;border-radius:9px}
+
+.msg{display:flex;gap:10px;margin-bottom:16px;animation:in .22s ease}
+@keyframes in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.msg .av{
+  width:27px;height:27px;border-radius:8px;flex:0 0 auto;font-size:11.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;margin-top:1px;
+}
+.msg.u .av{background:var(--brand);color:#fff}
+.msg.a .av{background:var(--brand-soft);color:var(--brand);border:1px solid var(--brand-line)}
+.msg .body{min-width:0;flex:1}
+.msg .who{font-size:11.5px;color:var(--ink3);margin-bottom:4px}
+.bubble{
+  border-radius:12px;padding:11px 14px;font-size:13.4px;line-height:1.8;
+  word-wrap:break-word;overflow-wrap:anywhere;
+}
+.msg.u .bubble{background:var(--brand);color:#fff;border-top-left-radius:4px}
+.msg.a .bubble{background:#fafbfd;border:1px solid var(--line);border-top-left-radius:4px}
+.msg.a .bubble.err{background:var(--err-soft);border-color:var(--err-line);color:#8f2b23}
+.bubble>*:first-child{margin-top:0}
+.bubble>*:last-child{margin-bottom:0}
+.bubble h1,.bubble h2,.bubble h3,.bubble h4{
+  font-size:13.8px;font-weight:650;margin:14px 0 7px;color:var(--ink);
+  padding-left:9px;border-left:3px solid var(--brand-line);
+}
+.bubble h1{font-size:15px}
+.bubble p{margin:7px 0}
+.bubble ul,.bubble ol{margin:7px 0;padding-left:21px}
+.bubble li{margin:3px 0}
+.bubble strong{font-weight:650;color:#12203a}
+.msg.u .bubble strong{color:#fff}
+.bubble code{background:#eef1f7;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12.2px;color:#33415a}
+.msg.u .bubble code{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3);color:#fff}
+.bubble pre{background:#1e2532;color:#e8edf5;border-radius:9px;padding:11px 13px;overflow-x:auto;margin:9px 0}
+.bubble pre code{background:none;border:0;padding:0;color:inherit;font-size:12.2px}
+.bubble hr{border:0;border-top:1px solid var(--line);margin:13px 0}
+.bubble table{border-collapse:collapse;width:100%;margin:9px 0;font-size:12.6px}
+.bubble th,.bubble td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+.bubble th{background:#f4f6fa;font-weight:650}
+.cursor{display:inline-block;width:7px;height:14px;background:var(--brand);vertical-align:-2px;animation:blink .9s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+
+.typing{display:flex;align-items:center;gap:7px;font-size:12.4px;color:var(--ink3)}
+.typing i{width:5px;height:5px;border-radius:50%;background:var(--brand);animation:bd .9s infinite}
+.typing i:nth-child(2){animation-delay:.15s}
+.typing i:nth-child(3){animation-delay:.3s}
+@keyframes bd{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+.empty{max-width:560px;margin:9vh auto 0;text-align:center;color:var(--ink3);padding:0 16px}
+.empty.hide{display:none}
+.empty h3{font-size:16px;color:var(--ink);margin-bottom:7px;font-weight:650}
+.empty p{font-size:13px;line-height:1.85}
+.gslot{display:block}
+
+.composer{flex:0 0 auto;border-top:1px solid var(--line2);padding:12px 14px 13px;background:var(--card)}
+.cbox{
+  display:flex;gap:9px;align-items:flex-end;border:1px solid var(--line);
+  border-radius:12px;padding:8px;background:#fbfcfe;transition:.15s;
+}
+.cbox:focus-within{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px var(--brand-soft)}
+.cbox.off{background:#f5f7fa;opacity:.75}
+textarea{
+  flex:1;font:inherit;font-size:13.4px;line-height:1.7;border:0;outline:0;resize:none;
+  background:transparent;color:var(--ink);max-height:150px;min-height:24px;padding:5px 4px;
+}
+textarea::placeholder{color:#a8b1bf}
+.send{
+  flex:0 0 auto;width:38px;height:38px;border-radius:10px;border:0;cursor:pointer;
+  background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;transition:.15s;
+}
+.send:hover:not(:disabled){background:#2c48b8}
+.send:disabled{background:#d3d9e3;cursor:not-allowed}
+.send svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cfoot{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:11.5px;color:var(--ink3)}
+.cfoot .grow{flex:1}
+kbd{font:inherit;font-size:10.5px;background:#f1f4f9;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 5px;color:var(--ink2)}
+
+#toast{
+  position:fixed;left:50%;bottom:26px;transform:translate(-50%,12px);background:#18212e;color:#fff;
+  font-size:12.6px;padding:9px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;z-index:70;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ================= 移动端适配（≤860px）=================
+   设计目标：整屏不出现页面级滚动条；输入框永远固定在底部可见；
+   说明文案全部收进对话面板内部，随消息区滚动，不挤占输入与答复空间。 */
+@media (max-width:860px){
+  html{-webkit-text-size-adjust:100%}
+  body{overflow:hidden}
+  header{height:52px;padding:0 12px;gap:9px}
+  header .ttl span{display:none}
+  header .badge{display:none}
+  header .btn{padding:6px 10px;font-size:12px}
+
+  .wrap{
+    grid-template-columns:1fr;grid-template-rows:1fr;gap:0;padding:0;
+    height:calc(100vh - 52px);
+    height:calc(var(--vh, 100dvh) - 52px);
+  }
+  .side{display:none}                 /* 使用须知卡片已由 JS 移入对话面板 */
+  main{height:100%}
+  .panel{border:0;border-radius:0;box-shadow:none}
+
+  /* ★ 防 iOS 聚焦自动放大：输入控件字号必须 ≥16px（小于 16px 时 Safari 会强制缩放页面） */
+  #q{font-size:16px;line-height:1.6;max-height:34vh}
+  #q::placeholder{font-size:14px}
+
+  /* 消息区与空状态 */
+  .msgs{padding:13px 13px 6px}
+  .msg .bubble{font-size:13px;padding:10px 12px}
+  .bubble table{font-size:12px}
+  .bubble pre{padding:9px 11px}
+  .empty{max-width:none;margin:0;text-align:left;padding:0}
+  .empty h3{font-size:14.5px;text-align:center;margin-bottom:6px}
+  .empty p{font-size:12.5px;line-height:1.75;color:var(--ink2)}
+
+  /* 移入对话面板的使用须知：去掉卡片外观，压紧行高 */
+  #slot-guide{margin-top:13px;border-top:1px dashed var(--line);padding-top:4px}
+  #slot-guide .card{border:0;box-shadow:none;background:transparent}
+  #slot-guide .card>h2{padding:10px 0 4px;border-bottom:0;font-size:11.5px;color:var(--ink3)}
+  #slot-guide .card>h2 em{display:none}
+  #slot-guide .card .bd{padding:0 0 2px}
+  #slot-guide ul.notes{gap:6px}
+  #slot-guide ul.notes li{font-size:12px;line-height:1.6}
+
+  /* 输入区：贴近底部，适配 iPhone 安全区 */
+  .composer{padding:9px 12px calc(9px + env(safe-area-inset-bottom,0px))}
+  .cfoot{margin-top:6px;font-size:11px}
+  .cfoot .kb{display:none}            /* 手机没有 Enter 键，隐藏快捷键提示 */
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="mark">对</div>
+  <div class="ttl">
+    <b>结算对账助手</b>
+    <span>平台-商家结算差异核查</span>
+  </div>
+  <div class="grow"></div>
+  <span class="badge" id="stat">正在连接…</span>
+  <button class="btn" id="btn-clear">清空对话</button>
+</header>
+
+<div class="wrap">
+
+  <!-- ========== 左侧 ========== -->
+  <aside class="side" id="side">
+
+    <section class="card" id="card-notes">
+      <h2>使用须知</h2>
+      <div class="bd">
+        <ul class="notes">
+          <li><b>按自然月对账</b>：在问题里说明月份即可，本期支持 <b>2026-07、2026-08、2026-09</b>，其余月份暂无数据。</li>
+          <li>支持询问某月的对账<b>是否有差异、差异原因、对账总额、共性差异</b>等问题。</li>
+          <li>结论里出现 <span class="tag w">置信度：低</span> 或 <span class="tag w">建议人工复核</span>，说明该笔证据不足，请人工确认后再处理。</li>
+          <li>若回复"数据暂时无法获取"，属演示环境的正常降级，<span class="tag o">稍后重试即可</span>，不代表账务有问题。</li>
+          <li>本环境为<b>演示数据</b>，请勿用于真实账务处理。</li>
+        </ul>
+      </div>
+    </section>
+
+  </aside>
+
+  <!-- ========== 右侧对话 ========== -->
+  <main>
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="dot" id="dot"></span>
+        <span>对账助手</span>
+        <em id="state-txt">就绪</em>
+        <div class="grow"></div>
+        <span class="pchip empty" id="pchip">未指定期间</span>
+      </div>
+
+      <div class="msgs" id="msgs">
+        <div class="empty" id="empty">
+          <h3>直接问就行</h3>
+          <p>在下面的输入框里说明<b>要核查哪个月</b>以及想看什么，例如"看看 2026-08 的差异"。</p>
+          <p>助手不会直接给你一串数字，而是按结算规则逐笔重算，给出
+             <b>核算过程、差异原因与置信度</b>。完整结论约需 30–90 秒。</p>
+          <!-- 移动端专用：使用须知会被移到这里（桌面端保持为空） -->
+          <div class="gslot" id="slot-guide"></div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="cbox" id="cbox">
+          <textarea id="q" rows="1" placeholder="说明要核查哪个月以及想看什么，例如：看看 2026-08 这期的差异，逐笔说明原因"></textarea>
+          <button class="send" id="send" title="发送">
+            <svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+          </button>
+        </div>
+        <div class="cfoot">
+          <span id="tip">Enter 发送 · 结果约需 30–90 秒</span>
+          <span class="grow"></span>
+          <span class="kb"><kbd>Enter</kbd> 发送 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<div id="toast">已复制</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ==================================================================
+     配置区 —— 整个页面唯一需要改动的地方
+     · 已内联，访客打开链接即可使用，无需任何填写
+     · 本文件随公开仓库发布，KEY 因此是公开的；
+       若要隐藏 KEY，把 PROXY_URL 指向一个中转服务（如 Cloudflare Worker），
+       KEY 存中转服务的环境变量里，本文件就不再需要 KEY。
+     ================================================================== */
+  var CFG = {
+    /* Dify 后端服务地址（结尾不要带斜杠） */
+    API_BASE: 'https://api.dify.ai/v1',
+
+    /* 应用 API Key：直接写入源码，访客无需配置 */
+    API_KEY: 'app-YJHYZ5NEJMv0FYRrnZw06S5p',
+
+    /* 可选：中转服务地址。填了就走中转，不再直连 API_BASE，也不需要 API_KEY */
+    PROXY_URL: '',
+
+    /* 模拟数据支持的期间（供从问题中识别期间用；页面上没有选择器） */
+    PERIODS: ['2026-07', '2026-08', '2026-09']
+  };
+
+  var PERIODS = CFG.PERIODS && CFG.PERIODS.length ? CFG.PERIODS : ['2026-08'];
+  var LS_USER = 'recon_user';
+  var MAX_CHARS = 2000;
+
+  /* ================== 状态 ================== */
+  var S = { period: '', conv: '', busy: false, ctrl: null };
+
+  /* ================== 元素 ================== */
+  var $ = function (id) { return document.getElementById(id); };
+  var msgs = $('msgs'), qEl = $('q'), sendBtn = $('send'), cbox = $('cbox'),
+      dot = $('dot'), stateTxt = $('state-txt'), statBadge = $('stat'),
+      pchip = $('pchip'), tip = $('tip'), emptyBox = $('empty');
+
+  /* ================== 响应式布局：把左侧卡片移到对话面板内 ==================
+     桌面端：使用须知在左栏。
+     移动端：使用须知移入对话面板的空状态内部 —— 说明随消息区滚动，
+             不会挤占输入框和答复的显示空间。 */
+  var MOBILE_MQ = window.matchMedia('(max-width: 860px)');
+  var sideBox = $('side'), slotGuide = $('slot-guide');
+  function applyLayout() {
+    var card = $('card-notes');
+    if (!card || !sideBox) return;
+    if (MOBILE_MQ.matches) slotGuide.appendChild(card);
+    else sideBox.appendChild(card);
+  }
+  if (MOBILE_MQ.addEventListener) MOBILE_MQ.addEventListener('change', applyLayout);
+  else if (MOBILE_MQ.addListener) MOBILE_MQ.addListener(applyLayout);
+
+  /* ================== 工具 ================== */
+  function toast(m) {
+    var t = $('toast'); t.textContent = m; t.classList.add('on');
+    clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('on'); }, 1900);
+  }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  /* ================== 只显示最终答案 ==================
+     Agent 节点会把「每一轮的中间文本」也累加进 answer。实测一次问答的原始 answer
+     有 10,514 字，其中约 3/4 是过程性内容：英文独白（"Let me ..."）、草稿算式、重复核对。
+     两类都要挡：
+       ① 带标记的思考块：<think>…</think>、<!--dify-deepseek-reasoning-->
+       ② 没有标记的逐轮叙述 —— 标签法挡不住
+     ② 改用「结构锚点」：输出格式被强约束为「一、本期概览 / 二、逐笔分析 / 三、… / 四、…」，
+     所以以首个标题行为起点截断，它之前的一切都是过程内容。
+     若整段没有标题（例如反问"要查哪一期"），退化为只丢掉开头连续的独白行。 */
+  var ANSWER_ANCHOR = /^(?:#{1,6}\s*)?(?:一|二|三|四)[、.．]/m;
+  var NARRATION = /\b(?:I'll|I will|I've|I have|I need|Let me|Let's|Now let|Now I|Now,|Next,|First,|Actually|Hmm|Wait|Great|Okay|Alright|OK,)\b/;
+
+  function cutToAnswer(s) {
+    var m = s.match(ANSWER_ANCHOR);
+    if (m) return m.index === 0 ? s : s.slice(m.index);
+    var lines = s.split('\n'), i = 0;
+    for (; i < lines.length; i++) {
+      var t = lines[i].trim();
+      if (!t) continue;                                 // 空行跳过
+      var han = (t.match(/[\u4e00-\u9fff]/g) || []).length;
+      if (han === 0 || NARRATION.test(t)) continue;     // 全英文 或 像独白 → 丢
+      break;                                            // 遇到正经中文，从这里开始
+    }
+    return lines.slice(i).join('\n');
+  }
+
+  function stripThink(s) {
+    var t = String(s)
+      .replace(/<!--\s*dify-deepseek-reasoning\s*-->/gi, '')
+      .replace(/<\s*think\s*>[\s\S]*?<\s*\/\s*think\s*>/gi, '')
+      .replace(/<\s*think\s*>[\s\S]*$/i, '')            // 流式中尚未闭合的
+      .replace(/<\s*\/?\s*think\s*>/gi, '');            // 落单的标签
+    return cutToAnswer(t).replace(/^\s+/, '');
+  }
+  function isConnected() {
+    return !!(CFG.PROXY_URL || CFG.API_KEY);
+  }
+  function getUserId() {
+    var u = localStorage.getItem(LS_USER);
+    if (!u) { u = 'web-' + Math.random().toString(36).slice(2, 10); localStorage.setItem(LS_USER, u); }
+    return u;
+  }
+
+  /* ================== 极简 Markdown 渲染（先转义，再解析，安全） ================== */
+  function inline(t) {
+    return esc(t)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  }
+  function md(src) {
+    var lines = String(src).replace(/\r\n?/g, '\n').split('\n');
+    var out = [], list = null, para = [], inCode = false, code = [], tbl = [];
+
+    function flushPara() { if (para.length) { out.push('<p>' + para.join('<br>') + '</p>'); para = []; } }
+    function closeList() { if (list) { out.push(list === 'ul' ? '</ul>' : '</ol>'); list = null; } }
+    function flushTable() {
+      if (!tbl.length) return;
+      var rows = tbl.filter(function (r) { return !/^\s*\|?[\s:|-]+\|?\s*$/.test(r); });
+      var html = '<table>';
+      rows.forEach(function (r, i) {
+        var cells = r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
+        html += '<tr>';
+        cells.forEach(function (c) {
+          html += (i === 0 ? '<th>' : '<td>') + inline(c.trim()) + (i === 0 ? '</th>' : '</td>');
+        });
+        html += '</tr>';
+      });
+      out.push(html + '</table>'); tbl = [];
+    }
+    function flushAll() { flushPara(); closeList(); flushTable(); }
+
+    for (var i = 0; i < lines.length; i++) {
+      var ln = lines[i].replace(/\s+$/, '');
+      if (/^\s*```/.test(ln)) {
+        if (inCode) { out.push('<pre><code>' + esc(code.join('\n')) + '</code></pre>'); code = []; inCode = false; }
+        else { flushAll(); inCode = true; }
+        continue;
+      }
+      if (inCode) { code.push(ln); continue; }
+
+      if (/\|/.test(ln) && /^\s*\|/.test(ln)) { flushPara(); closeList(); tbl.push(ln); continue; }
+      else if (tbl.length) flushTable();
+
+      if (!ln.trim()) { flushPara(); closeList(); continue; }
+
+      var m;
+      if ((m = ln.match(/^(#{1,6})\s+(.*)$/))) {
+        flushPara(); closeList();
+        out.push('<h' + m[1].length + '>' + inline(m[2]) + '</h' + m[1].length + '>'); continue;
+      }
+      if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(ln)) { flushPara(); closeList(); out.push('<hr>'); continue; }
+      if ((m = ln.match(/^\s*[-*+]\s+(.*)$/))) {
+        flushPara(); if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul'; }
+        out.push('<li>' + inline(m[1]) + '</li>'); continue;
+      }
+      if ((m = ln.match(/^\s*\d+[.)]\s+(.*)$/))) {
+        flushPara(); if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol'; }
+        out.push('<li>' + inline(m[1]) + '</li>'); continue;
+      }
+      closeList(); para.push(inline(ln));
+    }
+    if (inCode && code.length) out.push('<pre><code>' + esc(code.join('\n')) + '</code></pre>');
+    flushAll();
+    return out.join('\n');
+  }
+
+  /* ================== 消息渲染 ==================
+     空状态（含移动端移入的使用须知卡片）始终保持挂在 DOM 里，只切换显示。
+     否则"清空对话"会把它连同移入的卡片一起销毁。 */
+  function showEmpty(on) {
+    if (emptyBox) emptyBox.classList.toggle('hide', !on);
+  }
+  function clearMsgs() {
+    var olds = msgs.querySelectorAll('.msg');
+    for (var i = olds.length - 1; i >= 0; i--) { olds[i].parentNode.removeChild(olds[i]); }
+  }
+  function scroll() { msgs.scrollTop = msgs.scrollHeight; }
+
+  function addMsg(role, text) {
+    showEmpty(false);
+    var wrap = document.createElement('div');
+    wrap.className = 'msg ' + (role === 'u' ? 'u' : 'a');
+    var av = role === 'u' ? '我' : 'AI';
+    wrap.innerHTML =
+      '<div class="av">' + av + '</div>' +
+      '<div class="body"><div class="who">' + (role === 'u' ? '我' : '对账助手') + '</div>' +
+      '<div class="bubble"></div></div>';
+    var bubble = wrap.querySelector('.bubble');
+    if (role === 'u') { bubble.textContent = text; }
+    else if (text) { bubble.innerHTML = md(text); }
+    msgs.appendChild(wrap);
+    scroll();
+    return bubble;
+  }
+
+  /* ================== 期间：一律从问题文本中识别 ==================
+     页面上没有期间选择器，期间只来自用户提问时的表述。 */
+  /* 识别不出或存在多义时返回 '' —— 绝不瞎猜，交给助手反问。 */
+  function detectPeriod(t) {
+    var s = String(t || ''), i, p, mm, y;
+    // ① 完整年月：2026-08 / 2026年8月 / 2026/08 / 2026.08
+    for (i = 0; i < PERIODS.length; i++) {
+      p = PERIODS[i]; mm = String(Number(p.slice(5))); y = p.slice(0, 4);
+      if (s.indexOf(p) >= 0 ||
+          s.indexOf(y + '年' + mm + '月') >= 0 ||
+          s.indexOf(y + '年' + p.slice(5) + '月') >= 0 ||
+          s.indexOf(y + '/' + p.slice(5)) >= 0 ||
+          s.indexOf(y + '.' + p.slice(5)) >= 0) return p;
+    }
+    // ② 只说了"8月"—— 只有唯一匹配时才认，提到多个月份就不猜
+    var hit = '';
+    for (i = 0; i < PERIODS.length; i++) {
+      mm = String(Number(PERIODS[i].slice(5)));
+      if (new RegExp('(^|[^0-9])' + mm + '\\s*月').test(s)) {
+        if (hit) return '';
+        hit = PERIODS[i];
+      }
+    }
+    return hit;
+  }
+
+  /* 面板标题上的期间徽标：反映"这一轮实际用的是哪一期" */
+  function refreshPeriodChip() {
+    if (S.period) {
+      pchip.textContent = S.period;
+      pchip.classList.remove('empty');
+    } else {
+      pchip.textContent = '未指定期间';
+      pchip.classList.add('empty');
+    }
+  }
+
+  function enableInput() {
+    qEl.disabled = false;
+    sendBtn.disabled = S.busy;
+    cbox.classList.remove('off');
+  }
+
+  /* ================== 发送 / 流式接收 ================== */
+  function setState(kind, txt) {
+    dot.className = 'dot ' + (kind === 'busy' ? 'busy' : kind === 'ok' ? 'ok' : '');
+    stateTxt.textContent = txt;
+  }
+
+  function autoGrow() {
+    qEl.style.height = 'auto';
+    qEl.style.height = Math.min(qEl.scrollHeight, 150) + 'px';
+  }
+
+  function friendlyError(status, body) {
+    if (status === 401 || status === 403) return '服务暂时不可用（鉴权未通过）。请联系管理员检查服务配置。';
+    if (status === 404) return '服务接口地址不存在（404）。请联系管理员检查服务配置。';
+    if (status === 429) return '请求过于频繁，已被限流。请稍等片刻再试。';
+    if (status >= 500) return '服务端暂时异常（' + status + '），请稍后重试。';
+    var m = '';
+    try { var j = JSON.parse(body); m = j.message || j.error || ''; } catch (e) { m = String(body || '').slice(0, 160); }
+    return '请求未被接受（' + status + '）' + (m ? '：' + m : '。');
+  }
+
+  function send() {
+    if (S.busy) { if (S.ctrl) S.ctrl.abort(); return; }
+    var text = qEl.value.trim();
+    if (!text) { toast('请先输入问题'); return; }
+    if (!isConnected()) { toast('服务尚未配置完成，请联系管理员'); return; }
+
+    /* 期间一律从问题文本里识别；识别不出就留空，由助手反问要查哪一期 */
+    var usePeriod = detectPeriod(text);
+    S.period = usePeriod;
+    refreshPeriodChip();
+
+    qEl.value = ''; autoGrow();
+    addMsg('u', text);
+    var bubble = addMsg('a', '');
+    bubble.innerHTML = '<div class="typing"><i></i><i></i><i></i><span>正在查询对账数据…</span></div>';
+
+    S.busy = true; S.ctrl = new AbortController();
+    sendBtn.disabled = false;
+    sendBtn.title = '停止生成';
+    sendBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+    setState('busy', '正在核算…');
+    statBadge.className = 'badge';
+    statBadge.textContent = '生成中';
+
+    var url = (CFG.PROXY_URL || (CFG.API_BASE || 'https://api.dify.ai/v1').replace(/\/$/, '') + '/chat-messages');
+    var headers = { 'Content-Type': 'application/json' };
+    if (!CFG.PROXY_URL) headers['Authorization'] = 'Bearer ' + CFG.API_KEY;
+
+    fetch(url, {
+      method: 'POST',
+      headers: headers,
+      signal: S.ctrl.signal,
+      body: JSON.stringify({
+        // 页面已无期间选择器，识别到就带上，识别不到传固定占位符「未指定」
+        // （空串会被开始节点判为必填缺失）；提示词里约定：未指定则从问题中识别，仍没有就反问用户
+        inputs: { period: usePeriod || '未指定' },
+        query: text,
+        response_mode: 'streaming',
+        conversation_id: S.conv || '',
+        user: getUserId()
+      })
+    }).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (b) { throw new Error(friendlyError(res.status, b)); });
+      }
+      return readStream(res, bubble);
+    }).catch(function (err) {
+      if (err && err.name === 'AbortError') {
+        var va = stripThink(bubble._acc || '');
+        bubble.innerHTML = md(va ? va + '\n\n*（已手动停止）*' : '*（已停止）*');
+      } else {
+        bubble.classList.add('err');
+        bubble.innerHTML = md('**无法完成本次请求**\n\n' + (err && err.message ? err.message : '网络异常，请检查网络后重试。'));
+      }
+    }).then(function () {
+      S.busy = false; S.ctrl = null;
+      sendBtn.disabled = false;
+      sendBtn.title = '发送';
+      sendBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>';
+      setState('ok', '就绪');
+      statBadge.className = 'badge ok';
+      statBadge.textContent = '已连接';
+      scroll();
+    });
+  }
+
+  /* 只处理界面需要的事件类型；其余（node_finished / agent_log 等调试事件）跳过。
+     事件名固定出现在 payload 开头，因此只取前 40 字符做判断，代价与 payload 大小无关。
+     解析器对未知事件一律忽略 —— 这是与 Dify 版本演进共存的必要设计。 */
+  var WANTED_EVENTS = ['"message"', '"agent_message"', '"message_end"', '"message_replace"',
+                       '"error"', '"node_started"', '"workflow_started"', '"workflow_finished"'];
+  function isWantedEvent(payload) {
+    var i = payload.indexOf('"event"');
+    if (i < 0 || i > 120) return false;
+    var seg = payload.slice(i, i + 40);
+    for (var n = 0; n < WANTED_EVENTS.length; n++) {
+      if (seg.indexOf(WANTED_EVENTS[n]) >= 0) return true;
+    }
+    return false;
+  }
+
+  function readStream(res, bubble) {
+    var reader = res.body.getReader(), dec = new TextDecoder(), buf = '';
+    bubble._acc = '';
+
+    function handle(ev) {
+      var t = ev.event;
+      if (t === 'message' || t === 'agent_message') {
+        if (ev.answer) {
+          bubble._acc += ev.answer;
+          var vis = stripThink(bubble._acc);
+          if (vis) bubble.innerHTML = md(vis) + '<span class="cursor"></span>';
+          scroll();
+        }
+      } else if (t === 'message_end') {
+        if (ev.conversation_id) S.conv = ev.conversation_id;
+      } else if (t === 'message_replace') {
+        bubble._acc = ev.answer || '';
+        var v2 = stripThink(bubble._acc);
+        if (v2) bubble.innerHTML = md(v2);
+      } else if (t === 'error') {
+        throw new Error((ev.message || '生成过程中出错') + '（' + (ev.code || 'unknown') + '）');
+      } else if (t === 'node_started' || t === 'workflow_started') {
+        var title = (ev.data && (ev.data.title || ev.data.node_type)) || '';
+        if (title) stateTxt.textContent = '执行：' + title;
+      } else if (t === 'workflow_finished') {
+        setState('busy', '整理结论…');
+      }
+    }
+
+    function pump() {
+      return reader.read().then(function (r) {
+        if (r.done) {
+          var vis = stripThink(bubble._acc);
+          if (vis) bubble.innerHTML = md(vis);
+          else if (!bubble.classList.contains('err')) {
+            bubble.innerHTML = md(bubble._acc ? '*（本次没有生成可见结论，请重试一次）*' : '*（本次没有返回内容）*');
+          }
+          return;
+        }
+        buf += dec.decode(r.value, { stream: true });
+        var i;
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          var chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+          var lines = chunk.split('\n');
+          for (var k = 0; k < lines.length; k++) {
+            var line = lines[k];
+            if (line.indexOf('data:') !== 0) continue;
+            var payload = line.slice(5).trim();
+            if (!payload || payload === '[DONE]') continue;
+            /* 性能：Dify 除消息外还会推送 node_finished / agent_log 等调试事件，
+               实测一次问答总流量约 11MB，其中 ~90% 是这类事件（单条最大 2.2MB）。
+               用极廉价的字符串判断先筛掉，避免对它们做 JSON.parse 造成卡顿。 */
+            if (!isWantedEvent(payload)) continue;
+            var obj = null;
+            try { obj = JSON.parse(payload); } catch (e) { continue; }
+            handle(obj);
+          }
+        }
+        return pump();
+      });
+    }
+    return pump();
+  }
+
+  /* ================== 启动状态 ================== */
+  function boot() {
+    if (isConnected()) {
+      setState('ok', '就绪');
+      statBadge.className = 'badge ok';
+      statBadge.textContent = '已就绪';
+    } else {
+      setState('', '服务未配置');
+      statBadge.className = 'badge err';
+      statBadge.textContent = '服务未配置';
+    }
+  }
+
+  /* ================== 事件绑定 ================== */
+  qEl.addEventListener('input', function () {
+    autoGrow();
+    if (qEl.value.length > MAX_CHARS) qEl.value = qEl.value.slice(0, MAX_CHARS);
+  });
+  qEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+  });
+  sendBtn.addEventListener('click', send);
+
+  $('btn-clear').addEventListener('click', function () {
+    if (!msgs.querySelector('.msg')) { toast('对话已经是空的'); return; }
+    S.conv = '';
+    S.period = '';            // 上下文已重置，徽标一并复位
+    clearMsgs();
+    showEmpty(true);          // 直接回到默认引导文案，不再写"已清空对话"的说明
+    refreshPeriodChip();
+    scroll();
+    toast('已清空对话，上下文已重置');
+  });
+
+  /* ================== 软键盘适配 ==================
+     iOS 弹键盘时布局视口不变、visualViewport 会缩小，页面会被顶起造成"放大 + 漂移"。
+     这里把 visualViewport.height 实时写进 --vh，让整个壳跟着键盘收缩，位置就稳了。
+     （另一半在 CSS：#q 字号 16px，避免 iOS 因字号 <16px 触发自动放大。） */
+  function syncViewport() {
+    var vv = window.visualViewport;
+    var h = Math.round(vv ? vv.height : window.innerHeight);
+    document.documentElement.style.setProperty('--vh', h + 'px');
+    if (document.activeElement === qEl) window.scrollTo(0, 0);
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncViewport);
+    window.visualViewport.addEventListener('scroll', syncViewport);
+  }
+  window.addEventListener('resize', syncViewport);
+  window.addEventListener('orientationchange', function () { setTimeout(syncViewport, 260); });
+  qEl.addEventListener('focus', function () { setTimeout(syncViewport, 60); });
+  qEl.addEventListener('blur', function () { setTimeout(syncViewport, 60); });
+
+  /* ================== 启动 ================== */
+  syncViewport();
+  applyLayout();          // 依屏宽决定卡片挂载位置
+  enableInput();
+  refreshPeriodChip();
+  setState('', '就绪');
+  boot();
+})();
+</script>
+</body>
+</html>

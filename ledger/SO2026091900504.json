@@ -1,0 +1,107 @@
+{
+  "query": {
+    "order_id": "SO2026091900504",
+    "queried_at": "2026-09-21T11:00:00+08:00"
+  },
+  "tables": {
+    "orders": [
+      {
+        "order_id": "SO2026091900504",
+        "merchant_id": "M0231",
+        "user_id": "U238662",
+        "order_time": "2026-09-19 09:36:09",
+        "channel": "mini_program",
+        "currency": "CNY",
+        "goods_amount": 458.0,
+        "freight_amount": 0.0,
+        "discount_amount": 50.0,
+        "payable_amount": 408.0,
+        "paid_amount": 408.0,
+        "order_status": "paid",
+        "refund_status": "none",
+        "settlement_batch": "ST202609",
+        "created_at": "2026-09-19 09:36:09",
+        "updated_at": "2026-09-19 09:36:09"
+      }
+    ],
+    "order_items": [
+      {
+        "item_id": "IT01",
+        "sku_id": "SKU0231-003",
+        "product_name": "焕活精华套装",
+        "category": "护肤套装",
+        "unit_price": 458.0,
+        "quantity": 1,
+        "item_amount": 458.0,
+        "item_status": "normal"
+      }
+    ],
+    "coupons": [
+      {
+        "coupon_id": "CP900504",
+        "order_id": "SO2026091900504",
+        "coupon_code": "MERCHANT_50",
+        "coupon_name": "店铺满减券 50 元",
+        "discount_amount": 50.0,
+        "issuer": "merchant",
+        "used_at": "2026-09-19 09:36:09"
+      }
+    ],
+    "payments": [
+      {
+        "payment_id": "PAY900504",
+        "order_id": "SO2026091900504",
+        "paid_at": "2026-09-19 09:36:09",
+        "amount": 408.0,
+        "pay_channel": "wechat",
+        "trade_no": "797464073259",
+        "status": "success"
+      }
+    ],
+    "refunds": [],
+    "settlements": [
+      {
+        "settlement_id": "SE20260905041",
+        "order_id": "SO2026091900504",
+        "batch_no": "ST202609",
+        "period": "2026-09",
+        "settlement_base": 408.0,
+        "commission_rate": 0.1,
+        "commission_amount": 40.8,
+        "refund_deduction": 0.0,
+        "settlement_amount": 412.2,
+        "settled_at": "2026-10-05",
+        "calc_note": ""
+      }
+    ],
+    "settlement_batches": [
+      {
+        "batch_no": "ST202609",
+        "period": "2026-09",
+        "generated_at": "2026-10-05 03:00:00",
+        "run_type": "initial",
+        "status": "settled"
+      }
+    ],
+    "merchants": [
+      {
+        "merchant_id": "M0231",
+        "merchant_name": "轻颜美妆旗舰店",
+        "commission_rate": 0.1,
+        "settlement_cycle": "monthly",
+        "status": "active",
+        "joined_at": "2023-04-18"
+      }
+    ]
+  },
+  "row_counts": {
+    "orders": 1,
+    "order_items": 1,
+    "coupons": 1,
+    "payments": 1,
+    "refunds": 0,
+    "settlements": 1,
+    "settlement_batches": 1,
+    "merchants": 1
+  }
+}

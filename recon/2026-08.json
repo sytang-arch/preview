@@ -1,0 +1,95 @@
+{
+  "table": "recon_diff",
+  "period": "2026-08",
+  "batch_no": "ST202608",
+  "generated_at": "2026-09-05 03:00:00",
+  "row_count": 5,
+  "columns": [
+    "diff_id",
+    "batch_no",
+    "order_id",
+    "merchant_id",
+    "merchant_name",
+    "order_amount",
+    "settled_amount",
+    "gross_gap",
+    "symptom",
+    "status",
+    "detected_at"
+  ],
+  "rows": [
+    {
+      "diff_id": "D20260801",
+      "batch_no": "ST202608",
+      "order_id": "SO2026080100871",
+      "merchant_id": "M0231",
+      "merchant_name": "轻颜美妆旗舰店",
+      "order_amount": 299.0,
+      "settled_amount": 242.1,
+      "gross_gap": -56.9,
+      "symptom": "结算额明显低于按商品原价计算的结果",
+      "status": "open",
+      "detected_at": "2026-09-05 03:00:00"
+    },
+    {
+      "diff_id": "D20260802",
+      "batch_no": "ST202608",
+      "order_id": "SO2026080301204",
+      "merchant_id": "M0231",
+      "merchant_name": "轻颜美妆旗舰店",
+      "order_amount": 159.0,
+      "settled_amount": 143.1,
+      "gross_gap": -15.9,
+      "symptom": "该订单已全额退款，但本期仍有结算金额",
+      "status": "open",
+      "detected_at": "2026-09-05 03:00:00"
+    },
+    {
+      "diff_id": "D20260803",
+      "batch_no": "ST202608",
+      "order_id": "SO2026080701553",
+      "merchant_id": "M0231",
+      "merchant_name": "轻颜美妆旗舰店",
+      "order_amount": 458.0,
+      "settled_amount": 824.4,
+      "gross_gap": 366.4,
+      "symptom": "结算额接近按规则计算结果的 2 倍",
+      "status": "open",
+      "detected_at": "2026-09-05 03:00:00"
+    },
+    {
+      "diff_id": "D20260804",
+      "batch_no": "ST202608",
+      "order_id": "SO2026081100246",
+      "merchant_id": "M0577",
+      "merchant_name": "悦己家居专营店",
+      "order_amount": 468.0,
+      "settled_amount": 430.56,
+      "gross_gap": -37.44,
+      "symptom": "结算额高于按规则计算的结果",
+      "status": "open",
+      "detected_at": "2026-09-05 03:00:00"
+    },
+    {
+      "diff_id": "D20260805",
+      "batch_no": "ST202608",
+      "order_id": "SO2026081800512",
+      "merchant_id": "M0902",
+      "merchant_name": "山海食品旗舰店",
+      "order_amount": 256.0,
+      "settled_amount": 234.08,
+      "gross_gap": -21.92,
+      "symptom": "结算额略高于按规则计算的结果",
+      "status": "open",
+      "detected_at": "2026-09-05 03:00:00"
+    }
+  ],
+  "batch_meta": {
+    "settlement_batch": "ST202608",
+    "period": "2026-08",
+    "order_count": 24,
+    "settled_amount_total": 7259.67,
+    "gross_gap_total": 234.24,
+    "note": "gross_gap 为『实际结算额 − 订单商品金额』的粗算值，仅用于发现异常；gross_gap_total 同理，均不是按规则认定的差异金额。"
+  }
+}

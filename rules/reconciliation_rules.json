@@ -1,0 +1,328 @@
+{
+  "doc_type": "reconciliation_knowledge_base",
+  "title": "平台-商家结算对账知识手册",
+  "version": "2.0",
+  "updated_at": "2026-09-21",
+  "applicable_scope": "平台自营结算场景（商家入驻模式）。结算主体为平台，结算对象为入驻商家。",
+  "how_to_use": "本文件是核算的唯一依据。任何金额结论都必须以本文件中的规则条款为准，不得凭常识推断。若本文件与数据内容冲突，以本文件为准并说明冲突点。",
+
+  "1_business_overview": {
+    "summary": "消费者在平台下单并支付后，平台按结算周期（自然月）汇总该周期内商家的成交订单，扣除平台佣金及应冲减项目后，于次月 5 日出结算单并付给商家。",
+    "money_flow": [
+      "消费者支付货款 → 平台代收（payments 表）",
+      "订单产生优惠（coupons 表）：平台券由平台承担，商家券由商家承担",
+      "可能发生退款（refunds 表）",
+      "月末平台汇总，生成结算批次（settlement_batches 表）",
+      "对每笔订单计算应结算额，写入 settlements 表",
+      "对账系统比对『实际结算额』与『按规则应结算额』，差异写入 recon_diff 表"
+    ],
+    "key_roles": {
+      "platform": "平台方，制定规则、代收货款、执行结算",
+      "merchant": "入驻商家，提供服务、获得结算款、承担自身发放的优惠券成本"
+    }
+  },
+
+  "2_data_tables": {
+    "note": "所有金额字段单位均为人民币元，保留 2 位小数。日期时间字段为字符串，格式 'YYYY-MM-DD HH:MM:SS'。",
+
+    "merchants": {
+      "desc": "商家主数据",
+      "primary_key": "merchant_id",
+      "fields": {
+        "merchant_id": {"type": "string", "cn": "商家编号", "meaning": "商家唯一标识，形如 M0231"},
+        "merchant_name": {"type": "string", "cn": "商家名称"},
+        "commission_rate": {"type": "decimal", "cn": "佣金费率", "meaning": "该商家的平台佣金比例（小数，如 0.10 表示 10%）", "recon_role": "★ 计算应结算额时必须使用【该订单所属商家】的费率，不同商家费率不同"},
+        "settlement_cycle": {"type": "string", "cn": "结算周期", "meaning": "当前均为 monthly（自然月）"},
+        "status": {"type": "string", "cn": "商家状态", "meaning": "active / suspended"},
+        "joined_at": {"type": "date", "cn": "入驻日期"}
+      }
+    },
+
+    "orders": {
+      "desc": "订单主表，一行一笔订单",
+      "primary_key": "order_id",
+      "fields": {
+        "order_id": {"type": "string", "cn": "订单号", "meaning": "形如 SO2026080100871（SO + 8位日期 + 4位序号）"},
+        "merchant_id": {"type": "string", "cn": "商家编号", "foreign_key": "merchants.merchant_id"},
+        "user_id": {"type": "string", "cn": "用户编号"},
+        "order_time": {"type": "datetime", "cn": "下单时间"},
+        "channel": {"type": "string", "cn": "下单渠道", "meaning": "douyin 抖音 / tmall 天猫 / jd 京东 / mini_program 小程序"},
+        "currency": {"type": "string", "cn": "币种", "meaning": "当前均为 CNY"},
+        "goods_amount": {"type": "decimal", "cn": "商品金额合计", "meaning": "Σ(order_items.item_amount)，即商品原价合计，不含运费、不减优惠", "recon_role": "★ 计算结算基数的起点"},
+        "freight_amount": {"type": "decimal", "cn": "运费", "recon_role": "★ 不参与结算基数与佣金计算（见 R8）"},
+        "discount_amount": {"type": "decimal", "cn": "优惠合计", "meaning": "本订单所有优惠的金额合计（当前等于 coupons.discount_amount）", "caution": "⚠️ 这是订单级的优惠总额，不要与 coupons.discount_amount（单张券抵扣额）混用"},
+        "payable_amount": {"type": "decimal", "cn": "应付金额", "meaning": "goods_amount + freight_amount − discount_amount"},
+        "paid_amount": {"type": "decimal", "cn": "实付金额", "meaning": "消费者实际支付金额（payments 表中成功支付的金额合计）", "caution": "⚠️ 常见错误：把实付金额当作佣金计算基数。实付金额已扣除优惠，与结算基数不是同一个口径（见 R1/R2/R3）"},
+        "order_status": {"type": "string", "cn": "订单状态", "meaning": "paid 已支付 / cancelled 已取消 / closed 已关闭", "recon_role": "★ 非 paid 的订单原则上不予结算（见 R9）"},
+        "refund_status": {"type": "string", "cn": "退款状态", "meaning": "none 无退款 / partial 部分退款 / full 全额退款"},
+        "settlement_batch": {"type": "string", "cn": "所属结算批次", "foreign_key": "settlement_batches.batch_no"},
+        "created_at": {"type": "datetime", "cn": "创建时间"},
+        "updated_at": {"type": "datetime", "cn": "更新时间"}
+      }
+    },
+
+    "order_items": {
+      "desc": "订单商品明细，一行一个 SKU",
+      "primary_key": "item_id",
+      "fields": {
+        "item_id": {"type": "string", "cn": "明细编号"},
+        "sku_id": {"type": "string", "cn": "商品 SKU 编号"},
+        "product_name": {"type": "string", "cn": "商品名称"},
+        "category": {"type": "string", "cn": "商品类目"},
+        "unit_price": {"type": "decimal", "cn": "单价"},
+        "quantity": {"type": "integer", "cn": "数量"},
+        "item_amount": {"type": "decimal", "cn": "明细金额", "meaning": "unit_price × quantity", "recon_role": "★ 部分退款时，按此字段剔除退款商品金额（见 R11）"},
+        "item_status": {"type": "string", "cn": "明细状态", "meaning": "normal 正常 / refunded 已退"}
+      }
+    },
+
+    "coupons": {
+      "desc": "订单使用的优惠券（一单可多张，当前数据一单最多一张）",
+      "primary_key": "coupon_id",
+      "fields": {
+        "coupon_id": {"type": "string", "cn": "券记录编号"},
+        "coupon_code": {"type": "string", "cn": "券编码", "meaning": "PLATFORM_xx 平台券 / MERCHANT_xx 商家券"},
+        "coupon_name": {"type": "string", "cn": "券名称"},
+        "discount_amount": {"type": "decimal", "cn": "抵扣金额"},
+        "issuer": {"type": "string", "cn": "券的发放方", "meaning": "platform 平台发放 / merchant 商家发放", "recon_role": "★★ 对账最关键的字段，直接决定结算基数是否冲减（见 R2/R3）"},
+        "used_at": {"type": "datetime", "cn": "用券时间"}
+      }
+    },
+
+    "payments": {
+      "desc": "支付流水，一行一次支付尝试",
+      "primary_key": "payment_id",
+      "fields": {
+        "payment_id": {"type": "string", "cn": "支付流水号"},
+        "paid_at": {"type": "datetime", "cn": "支付时间"},
+        "amount": {"type": "decimal", "cn": "支付金额"},
+        "pay_channel": {"type": "string", "cn": "支付渠道", "meaning": "wechat 微信 / alipay 支付宝 / unionpay 银联"},
+        "trade_no": {"type": "string", "cn": "第三方交易号"},
+        "status": {"type": "string", "cn": "支付状态", "meaning": "success 成功 / failed 失败 / closed 已关闭", "recon_role": "★ 无 success 流水的订单不予结算（见 R9）"}
+      }
+    },
+
+    "refunds": {
+      "desc": "退款流水",
+      "primary_key": "refund_id",
+      "fields": {
+        "refund_id": {"type": "string", "cn": "退款单号"},
+        "refund_no": {"type": "string", "cn": "退款流水号"},
+        "applied_at": {"type": "datetime", "cn": "申请时间"},
+        "refunded_at": {"type": "datetime", "cn": "退款完成时间", "recon_role": "★★ 判断退款是否落在本结算周期的唯一依据（见 R4/R10）"},
+        "amount": {"type": "decimal", "cn": "退款金额"},
+        "refund_type": {"type": "string", "cn": "退款类型", "meaning": "full 全额退款 / partial 部分退款"},
+        "refund_scope": {"type": "string", "cn": "退款范围", "meaning": "整单，或具体 sku_id"},
+        "reason": {"type": "string", "cn": "退款原因"},
+        "status": {"type": "string", "cn": "退款状态", "meaning": "success / processing / rejected"}
+      }
+    },
+
+    "settlement_batches": {
+      "desc": "结算批次，一个周期一个批次",
+      "primary_key": "batch_no",
+      "fields": {
+        "batch_no": {"type": "string", "cn": "批次号", "meaning": "ST + 年月，如 ST202608。重跑批次会出现 -RETRY 后缀"},
+        "period": {"type": "string", "cn": "结算期间", "meaning": "YYYY-MM"},
+        "generated_at": {"type": "datetime", "cn": "出单时间", "meaning": "次月 5 日"},
+        "run_type": {"type": "string", "cn": "运行类型", "meaning": "initial 首次生成 / rerun 重跑", "recon_role": "★ rerun 时应当覆盖原记录而非追加（见 R6）"},
+        "status": {"type": "string", "cn": "批次状态", "meaning": "generated / settled / void"}
+      }
+    },
+
+    "settlements": {
+      "desc": "结算明细，一行一笔订单的一次结算入账",
+      "primary_key": "settlement_id",
+      "fields": {
+        "settlement_id": {"type": "string", "cn": "结算明细号"},
+        "batch_no": {"type": "string", "cn": "结算批次", "foreign_key": "settlement_batches.batch_no", "recon_role": "★ 同一订单在同一批次内应当只有一条记录（见 R6）"},
+        "period": {"type": "string", "cn": "结算期间"},
+        "settlement_base": {"type": "decimal", "cn": "结算基数", "meaning": "计算佣金所依据的金额。按规则应为：商品金额合计 − 商家券抵扣额（平台券不冲减）。", "recon_role": "★★ 很多差异的根因就出在这个字段取值上"},
+        "commission_rate": {"type": "decimal", "cn": "本次使用的佣金费率"},
+        "commission_amount": {"type": "decimal", "cn": "佣金金额", "meaning": "settlement_base × commission_rate"},
+        "refund_deduction": {"type": "decimal", "cn": "退款冲减额"},
+        "settlement_amount": {"type": "decimal", "cn": "结算金额", "meaning": "最终结算给商家的金额 = settlement_base − commission_amount − refund_deduction", "recon_role": "★★ 与实际应有值比对，得出差异"},
+        "settled_at": {"type": "date", "cn": "结算日期"},
+        "calc_note": {"type": "string", "cn": "计算备注", "meaning": "如『批次重跑追加』", "recon_role": "★ 备注非空往往指向批次重跑问题"}
+      }
+    },
+
+    "recon_diff": {
+      "desc": "对账差异清单，由对账系统自动比对生成（即查对账清单工具返回的表）",
+      "primary_key": "diff_id",
+      "fields": {
+        "diff_id": {"type": "string", "cn": "差异编号"},
+        "batch_no": {"type": "string", "cn": "所属结算批次"},
+        "order_id": {"type": "string", "cn": "订单号"},
+        "merchant_id": {"type": "string", "cn": "商家编号"},
+        "order_amount": {"type": "decimal", "cn": "订单商品金额", "meaning": "取自 orders.goods_amount"},
+        "settled_amount": {"type": "decimal", "cn": "实际结算额", "meaning": "该订单在本期 settlements 中的 settlement_amount 合计"},
+        "gross_gap": {"type": "decimal", "cn": "粗算差异", "meaning": "settled_amount − order_amount", "recon_role": "⚠️⚠️ 这不是认定差异，只是粗算值，仅用于发现异常。认定差异必须按 R7 重新计算", "caution": "常见错误：直接引用 gross_gap 作为差异金额。两者口径不同，数值必然不等"},
+        "symptom": {"type": "string", "cn": "系统初判症状", "meaning": "对账系统的自然语言描述，仅供参考，可能不准确或不完整"},
+        "status": {"type": "string", "cn": "处理状态", "meaning": "open 未解决 / closed 已解决"},
+        "detected_at": {"type": "datetime", "cn": "发现时间"}
+      },
+      "batch_meta": {
+        "desc": "清单头部的汇总信息",
+        "fields": {
+          "settlement_batch": {"type": "string", "cn": "结算批次"},
+          "order_count": {"type": "integer", "cn": "该期间订单总数"},
+          "settled_amount_total": {"type": "decimal", "cn": "该期间结算总额"},
+          "gross_gap_total": {"type": "decimal", "cn": "该期间粗算差异合计", "recon_role": "⚠️ 与 gross_gap 同样只是粗算口径，不可作为认定净差异"},
+          "note": {"type": "string", "cn": "口径说明"}
+        }
+      }
+    }
+  },
+
+  "3_reconciliation_method": {
+    "desc": "标准对账流程。每一步都必须做完再进入下一步。",
+    "steps": [
+      {
+        "step": 1,
+        "name": "取对账清单",
+        "action": "按期间查询 recon_diff，得到本期待处理的差异笔数与症状描述。",
+        "output": "差异笔数、每笔的订单号、系统初判症状、gross_gap（仅作线索）"
+      },
+      {
+        "step": 2,
+        "name": "取结算规则",
+        "action": "查询本手册，确认佣金口径、券归属、退款处理、批次规则等。",
+        "output": "可引用的规则编号（R1–R12）",
+        "note": "★ 规则只需获取一次，全程复用；不要对每笔差异重复查询。"
+      },
+      {
+        "step": 3,
+        "name": "逐笔取订单台账",
+        "action": "对每一笔差异订单，按 order_id 查询完整台账（订单/明细/券/支付/退款/结算/批次/商家八张表）。",
+        "output": "该订单在全链路上的所有原始记录",
+        "note": "★ 每笔差异都要单独查询。order_id 必须原样取自清单，不得改写或推测。"
+      },
+      {
+        "step": 4,
+        "name": "确定结算基数",
+        "action": "基数起始值 = Σ order_items.item_amount。然后按券的 issuer 判断是否冲减：issuer=platform 不冲减（R2）；issuer=merchant 冲减（R3）。运费始终不计入（R8）。",
+        "output": "结算基数",
+        "caution": "⚠️ 不要用 orders.paid_amount 作为基数——那是扣券后的实付额，口径不同。"
+      },
+      {
+        "step": 5,
+        "name": "计算应结算额",
+        "action": "应结算额 = 结算基数 − 结算基数 × merchants.commission_rate。若本期内发生退款，先按 R4/R11 调整基数；若订单作废或未成功支付，应结算额为 0（R9）。",
+        "output": "应结算额",
+        "caution": "⚠️ 必须使用【该订单所属商家】的 commission_rate，不同商家费率不同。"
+      },
+      {
+        "step": 6,
+        "name": "认定差异",
+        "action": "认定差异 = 实际结算额 − 应结算额。正数表示多结算给商家（需扣回），负数表示少结算（需补付）。实际结算额取该订单本期 settlements 中所有 settlement_amount 之和。",
+        "output": "该笔的认定差异"
+      },
+      {
+        "step": 7,
+        "name": "归因与举证",
+        "action": "定位被违反的规则编号，并给出一段『能复现的数字算式』作为证据。算式中的数字必须全部来自台账原始字段，且计算结果要与实际结算额吻合。",
+        "output": "根因 + 证据算式",
+        "caution": "⚠️ 算式对不上的归因不要下结论，应标注『证据不足，建议人工复核』。"
+      },
+      {
+        "step": 8,
+        "name": "归集汇总",
+        "action": "汇总本期净差异、需补付合计、需扣回合计。",
+        "output": "本期对账结论"
+      }
+    ]
+  },
+
+  "4_discrepancy_criteria": {
+    "formula": "认定差异 = 实际结算额 − 应结算额",
+    "sign_convention": {
+      "positive": "多结算给商家，需从下期扣回",
+      "negative": "少结算给商家，需补付给商家",
+      "zero": "无差异"
+    },
+    "comparison_basis": "必须把『实际结算额』与『按规则计算的应结算额』比较。不得与订单商品金额、实付金额做比较——那些是粗算口径。",
+    "materiality": "当前无金额重要性阈值，任何非零差异均需处理。",
+    "aggregation": "净差异 = 本期全部差异的代数和；同时分别给出需补付合计与需扣回合计。"
+  },
+
+  "5_settlement_rules": [
+    {"id": "R1", "name": "佣金计算", "text": "佣金 = 结算基数 × 该商家的 commission_rate。结算基数按 R2/R3/R8/R11 确定。", "common_error": "误用订单实付金额（paid_amount）作为结算基数"},
+    {"id": "R2", "name": "平台券成本归属", "text": "issuer = platform 的优惠券，其抵扣金额由平台承担，不冲减结算基数（基数仍按商品原价计）。", "common_error": "把平台券抵扣额从基数中扣除，导致少结算给商家"},
+    {"id": "R3", "name": "商家券成本归属", "text": "issuer = merchant 的优惠券，其抵扣金额由商家承担，必须从结算基数中扣除。", "common_error": "忘记扣除商家券，导致多结算给商家"},
+    {"id": "R4", "name": "周期内退款处理", "text": "退款完成时间（refunds.refunded_at）落在本结算周期内的：全额退款 → 本期不予结算（应结算额为 0）；部分退款 → 按 R11 重算基数后结算。", "common_error": "全额退款未冲销，仍按未退款结算"},
+    {"id": "R5", "name": "结算周期与出单", "text": "结算周期为自然月；次月 5 日出结算单（settlement_batches.generated_at）。", "common_error": ""},
+    {"id": "R6", "name": "结算批次唯一性", "text": "同一订单在【同一批次】内只允许存在一条结算记录。批次重跑（run_type = rerun）时必须覆盖原记录，不得追加。", "common_error": "重跑时追加了新记录，导致同一订单被结算两次（金额约为 2 倍）"},
+    {"id": "R7", "name": "差异认定口径", "text": "认定差异 = 实际结算额 − 按上述规则计算的应结算额。清单中的 gross_gap 是『实际结算额 − 订单商品金额』的粗算值，仅用于发现异常，不是认定差异。", "common_error": "直接引用 gross_gap 作为差异金额"},
+    {"id": "R8", "name": "运费处理", "text": "运费（orders.freight_amount）不计入结算基数，也不参与佣金计算。", "common_error": "把运费并入基数，导致多结算给商家"},
+    {"id": "R9", "name": "无效订单不予结算", "text": "order_status 为 cancelled 或 closed 的订单，或 payments 中不存在 status = success 的流水时，应结算额为 0，不得产生结算记录。", "common_error": "作废订单仍被正常结算"},
+    {"id": "R10", "name": "跨期退款", "text": "退款完成时间落在【下一周期】的订单，本期按正常口径结算；待退款实际发生后，在下一期结算中冲减（扣回）。", "common_error": "提前在本期冲销，导致少结算给商家"},
+    {"id": "R11", "name": "部分退款基数重算", "text": "部分退款时，将 refunds.refund_scope 指向的商品（按 order_items.item_amount）从结算基数中剔除，再计算佣金。", "common_error": "未重算基数，仍按退款前金额计佣"},
+    {"id": "R12", "name": "金额精度", "text": "所有金额保留 2 位小数，四舍五入。比对差异时按分对齐。", "common_error": ""}
+  ],
+
+  "6_common_diff_patterns": [
+    {"symptom": "结算额偏低，且恰好等于『(商品金额 − 平台券抵扣额) × (1 − 费率)』", "likely_cause": "平台券抵扣额被错误地从结算基数中扣除", "check_path": "查 coupons.issuer，若为 platform 则违反 R2；用算式验证", "rule": "R2"},
+    {"symptom": "结算额偏高，且恰好等于『(商品金额 + 运费) × (1 − 费率)』", "likely_cause": "运费被计入结算基数", "check_path": "比对 orders.freight_amount 是否大于 0；用算式验证", "rule": "R8"},
+    {"symptom": "结算额偏高，且恰好等于『商品金额 × (1 − 费率)』（未扣商家券）", "likely_cause": "商家券未从结算基数中扣除", "check_path": "查 coupons.issuer，若为 merchant 则违反 R3；用算式验证", "rule": "R3"},
+    {"symptom": "订单已全额退款，但本期仍存在结算记录", "likely_cause": "周期内全额退款未冲销", "check_path": "比对 refunds.refunded_at 的月份与结算期间；确认 refund_type = full", "rule": "R4"},
+    {"symptom": "退款实际发生在下一周期，但本期结算额为 0 或偏低", "likely_cause": "跨期退款被提前冲销", "check_path": "比对 refunds.refunded_at 的月份是否晚于结算期间", "rule": "R10"},
+    {"symptom": "结算额约为按规则计算结果的 2 倍", "likely_cause": "结算批次重跑时追加记录而非覆盖", "check_path": "统计该订单在同批次下的 settlements 条数；查看 batch_no 是否含 -RETRY、calc_note 是否非空、批次 run_type 是否为 rerun", "rule": "R6"},
+    {"symptom": "订单已作废或已关闭，但存在结算记录", "likely_cause": "无效订单被正常结算", "check_path": "查 orders.order_status 与 payments.status", "rule": "R9"},
+    {"symptom": "部分退款后结算额未下降", "likely_cause": "部分退款未按 R11 重算基数", "check_path": "比对订单商品明细与退款范围；用算式验证", "rule": "R11"}
+  ],
+
+  "7_exception_handling": {
+    "desc": "当数据获取或核算条件不满足时的处理约定。禁止在信息不完整的情况下给出确定的金额结论。",
+    "cases": [
+      {
+        "case": "台账查询失败（404 / 返回空 / 非 JSON）",
+        "handling": "明确标注该笔『数据未获取』，说明失败的订单号与失败原因（用业务语言，不要抛原始报错）。列出该笔无法完成核算的原因，并继续处理其余差异。最后在总结中注明『N 笔因数据缺失未能核算，建议人工核实』。",
+        "forbidden": "不得凭症状描述推断根因，不得编造金额。"
+      },
+      {
+        "case": "规则文件查询失败",
+        "handling": "停止金额核算。只报告已获取到的客观事实（例如差异笔数、涉及订单号），并说明『结算规则未获取，无法计算应结算额与认定差异，请稍后重试或联系管理员』。",
+        "forbidden": "不得凭记忆或常识自行套用规则计算。"
+      },
+      {
+        "case": "指定期间无差异（清单为空）",
+        "handling": "直接回复『该期间未发现未解决差异』，并说明该期间的订单数与结算总额（如清单头部的 batch_meta 提供了）。",
+        "forbidden": "不得虚构差异。"
+      },
+      {
+        "case": "清单存在但某笔订单的台账查不到",
+        "handling": "同『台账查询失败』。",
+        "forbidden": ""
+      },
+      {
+        "case": "同一笔差异有多个可能原因叠加",
+        "handling": "分别列出每个候选原因及其对应算式；若无法唯一确定，标注『多因素叠加，需人工复核』，不要强行选一个。",
+        "forbidden": "不得把多个原因合并成一句含糊结论。"
+      },
+      {
+        "case": "台账数据不足以判定（缺少必要表或字段为空）",
+        "handling": "标注『证据不足』，列出还缺哪些数据，不要猜测。",
+        "forbidden": ""
+      },
+      {
+        "case": "用户询问的期间格式不正确或不在数据范围内",
+        "handling": "说明当前可用期间为 2026-07 / 2026-08 / 2026-09，请用户指定其一。",
+        "forbidden": "不得用其他期间的数据代替。"
+      }
+    ]
+  },
+
+  "8_field_confusion_pairs": {
+    "desc": "最容易混淆的字段对照，核算时逐条自查。",
+    "pairs": [
+      {"a": "orders.goods_amount", "b": "orders.paid_amount", "diff": "前者是商品原价合计，后者是扣券后实付额。结算基数看前者，不看后者。"},
+      {"a": "orders.discount_amount", "b": "coupons.discount_amount", "diff": "前者是订单级优惠总额，后者是单张券的抵扣额。券归属判断必须看 coupons.issuer。"},
+      {"a": "settlements.settlement_base", "b": "settlements.settlement_amount", "diff": "前者是计佣基数，后者是扣佣金后的实际结算额。对账比的是后者。"},
+      {"a": "recon_diff.gross_gap", "b": "认定差异", "diff": "前者以订单商品金额为基准粗算，后者以按规则计算的应结算额为基准。二者必然不等。"},
+      {"a": "orders.order_status", "b": "orders.refund_status", "diff": "前者是订单生命周期状态，后者是退款状态。作废与退款是两回事，处理规则也不同（R9 vs R4）。"},
+      {"a": "refunds.refunded_at", "b": "refunds.applied_at", "diff": "判断退款落在哪个结算周期，一律以 refunded_at（退款完成时间）为准，不是 applied_at。"},
+      {"a": "settlement_batches.batch_no", "b": "settlements.batch_no", "diff": "正常应一致；若结算记录的批次号带 -RETRY 后缀，说明来自重跑批次，需重点核查 R6。"}
+    ]
+  }
+}
